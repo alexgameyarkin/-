@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Косынка WIP👑⭐</title>
+    <style>
+        /* Сброс отступов и запрет выделения элементов пальцем */
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #062b15; font-family: 'Segoe UI', Arial, sans-serif; position: fixed; }
+        
+        /* Игровой стол */
+        #table-area { width: 100%; height: 100%; position: relative; background: radial-gradient(circle, #0b5329 0%, #052914 100%); overflow: hidden; }
+        #table-area::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 0); background-size: 4px 4px; pointer-events: none; }
+
+        /* Встроенный баннер Яндекс Игр 300х300 в левом нижнем углу */
+        #ad-overlay-block { position: absolute; left: 25px; bottom: 25px; width: 300px; height: 300px; background: #111a24; border: 3px solid #b89742; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 10; }
+        #ad-banner-inner { width: 280px; height: 240px; background: #1a2636; border: 1px dashed #4a617c; display: flex; align-items: center; justify-content: center; text-align: center; color: #8ba3c2; font-size: 13px; border-radius: 4px; }
+
+        /* УМНОЕ СКРЫТИЕ: Если экран узкий (как на смартфонах), баннер полностью исчезает */
+        @media (max-width: 850px) {
+            #ad-overlay-block {
+                display: none !important;
+            }
+        }
+
+        /* Верхняя HUD панель */
+        #top-bar { position: absolute; top: 0; left: 0; right: 0; height: 60px; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 5; border-bottom: 1px solid rgba(184, 151, 66, 0.2); }
+        .hud-text { color: #e6c675; font-size: 18px; font-weight: bold; letter-spacing: 1px; text-shadow: 0 2px 4px rgba(0,0,0,0.6); }
+        .btn-group { display: flex; gap: 15px; }
+        
+        /* Золотые кнопки Вегаса */
+        .casino-btn { background: linear-gradient(180deg, #d4af37 0%, #aa7c11 100%); border: 1px solid #e6c675; border-radius: 4px; color: #000; font-weight: bold; padding: 10px 20px; cursor: pointer; text-transform: uppercase; font-size: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.4); transition: all 0.2s; }
+        .casino-btn:hover { background: linear-gradient(180deg, #e6c675 0%, #c59b27 100%); transform: translateY(-1px); box-shadow: 0 6px 12px rgba(0,0,0,0.5); }
+        
+        /* Модальные оверлеи (Окна результатов) */
+        .screen-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 20; backdrop-filter: blur(5px); }
+        .modal-window { background: #111e15; border: 3px solid #b89742; border-radius: 12px; padding: 40px 60px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.9); max-width: 500px; }
+        .modal-window h1 { color: #e6c675; margin-bottom: 15px; font-size: 32px; text-transform: uppercase; letter-spacing: 2px; }
+        .modal-window p { color: #fff; margin-bottom: 25px; font-size: 16px; }
+        
+        /* Экран блокировки при вертикальном режиме смартфона */
+        #orientation-blocker { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(5, 15, 10, 0.98); display: none; flex-direction: column; align-items: center; justify-content: center; color: #e6c675; z-index: 100; text-align: center; font-weight: bold; font-size: 20px; padding: 20px; box-shadow: inset 0 0 100px rgba(0,0,0,0.8); }
+        .phone-icon { font-size: 60px; margin-bottom: 20px; animation: rotatePhone 2s ease-in-out infinite; }
+        @keyframes rotatePhone { 0% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
+
+        canvas { display: block; width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+<div id="orientation-blocker">
+    <div class="phone-icon">📱🔄</div>
+    <div>Пожалуйста, поверните телефон<br><span style="font-size: 14px; color: #fff; font-weight: normal; margin-top: 10px; display: block;">Для игры необходим альбомный режим</span></div>
+</div>
+
+<div id="table-area">
+    <div id="top-bar">
+        <div id="timer-display" class="hud-text">ВРЕМЯ: 10:00</div>
+        <div class="btn-group">
+            <button id="quick-restart-btn" class="casino-btn" style="display: inline-block;">Новый расклад</button>
+            <button id="undo-btn" class="casino-btn" style="display: none;">Отменить ход (5)</button>
+            <button id="reshuffle-btn" class="casino-btn" style="display: none;">Пересобрать</button>
+        </div>
+    </div>
+
+    <div id="ad-overlay-block">
+        <div style="margin-bottom: 5px; font-weight: bold; font-size: 11px; color: #b89742; letter-spacing: 1px;">ЯНДЕКС РЕКЛАМА</div>
+        <div id="ad-banner-inner">Рекламный блок Яндекс Игр<br>(RTB 300x300)</div>
+    </div>
+    
+    <!-- Твой холст Canvas теперь гарантированно загрузится РАНЬШЕ скрипта -->
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<div id="start-screen" class="screen-overlay">
+    <div class="modal-window">
+        <h1>Косынка WIP</h1>
+        <p>Премиальный пасьянс в стиле казино</p>
+        <button id="start-btn" class="casino-btn" style="font-size: 18px; padding: 15px 40px;">Начать игру</button>
+    </div>
+</div>
+
+<div id="lose-screen" class="screen-overlay" style="display: none;">
+    <div class="modal-window">
+        <h1 style="color: #c0392b;">Время вышло!</h1>
+        <p>Вы проиграли. Попытайтесь снова!</p>
+        <button id="retry-btn" class="casino-btn" style="font-size: 16px; padding: 12px 30px;">Попробовать еще раз</button>
+    </div>
+</div>
+
+<div id="win-screen" class="screen-overlay" style="display: none;">
+    <div class="modal-window">
+        <div style="font-size: 50px; margin-bottom: 10px;">👑⭐</div>
+        <h1>ПОБЕДА!</h1>
+        <p>Пасьянс полностью собран! Поздравляем!</p>
+        <button id="win-btn" class="casino-btn" style="font-size: 16px; padding: 12px 30px;">Сыграть заново</button>
+    </div>
+</div>
+<script>
+// Скрипт теперь видит холст и не вылетает в ошибку
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let CARD_WIDTH = 100; let CARD_HEIGHT = 145; const CARD_RADIUS = 8;
+const COLORS = { '♥': '#e74c3c', '♦': '#e74c3c', '♣': '#1c2833', '♠': '#1c2833' }; 
+const HOUSE_SUIT_COLORS = { '♥': '#5c1010', '♦': '#5c1010', '♣': '#0b1116', '♠': '#0b1116' }; 
+const SUITS = ['♥', '♦', '♣', '♠']; 
+const VALUES = ['Т', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'В', 'Д', 'К'];
+
+let zones = { deck: { x: 30, y: 90 }, waste: { x: 150, y: 90 }, foundations: [ { x: 450, y: 90 }, { x: 570, y: 90 }, { x: 690, y: 90 }, { x: 810, y: 90 } ], tableaus: [] };
+let deck = [], waste = [], foundations = [[], [], [], []], tableaus = [[], [], [], [], [], [], []];
+let animations = [], gameStarted = false, timerInterval = null, timeLeft = 600, historyState = [];
+let isDragging = false, draggedCards = [], dragX = 0, dragY = 0, dragOffsetX = 0, dragOffsetY = 0, sourceStack = null;
+let undoCount = 5;
+
+function checkOrientation() {
+    const blocker = document.getElementById('orientation-blocker');
+    if (window.innerHeight > window.innerWidth) { blocker.style.display = 'flex'; } 
+    else { blocker.style.display = 'none'; }
+}
+
+window.addEventListener('resize', () => { checkOrientation(); updateLayout(); });
+window.addEventListener('orientationchange', () => { setTimeout(() => { checkOrientation(); updateLayout(); }, 200); });
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playCardSound() {
+    if (!audioCtx || audioCtx.state === 'suspended') return;
+    let bufferSize = audioCtx.sampleRate * 0.08;
+    let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    let data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
+    let noise = audioCtx.createBufferSource(); noise.buffer = buffer;
+    let filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+    let gainNode = audioCtx.createGain(); gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+    noise.connect(filter); filter.connect(gainNode); gainNode.connect(audioCtx.destination); noise.start();
+}
+
+function playWinSound() {
+    if (!audioCtx || audioCtx.state === 'suspended') return;
+    let notes = [261.63, 329.63, 392.00, 523.25];
+    notes.forEach((freq, idx) => {
+        let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.1);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime + idx * 0.1); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + idx * 0.1 + 0.6);
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(audioCtx.currentTime + idx * 0.1); osc.stop(audioCtx.currentTime + idx * 0.1 + 0.6);
+    });
+}
+
+function playLoseSound() {
+    if (!audioCtx || audioCtx.state === 'suspended') return;
+    let osc = audioCtx.createOscillator(); let gain = audioCtx.createGain();
+    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(70, audioCtx.currentTime + 0.8);
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.8);
+}
+function drawCardBack(ctx, x, y, w, h) {
+    ctx.fillStyle = '#9e1b1b'; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 2; ctx.strokeRect(x + 5, y + 5, w - 10, h - 10);
+    ctx.strokeStyle = 'rgba(212, 175, 55, 0.15)'; ctx.lineWidth = 1;
+    let step = Math.max(5, w / 10); 
+    for (let i = 8; i < w - 8; i += step) { ctx.beginPath(); ctx.moveTo(x + i, y + 8); ctx.lineTo(x + i + step, y + h - 8); ctx.stroke(); }
+    ctx.fillStyle = '#d4af37'; ctx.beginPath(); ctx.arc(x + w/2, y + h/2, w * 0.14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#9e1b1b'; ctx.beginPath(); ctx.arc(x + w/2, y + h/2, w * 0.10, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawEmptySlot(ctx, x, y, type, index) {
+    ctx.strokeStyle = 'rgba(214, 198, 117, 0.15)'; ctx.lineWidth = 2; ctx.strokeRect(x, y, CARD_WIDTH, CARD_HEIGHT);
+    ctx.save();
+    if (type === 'foundation') {
+        let suit = SUITS[index]; ctx.fillStyle = HOUSE_SUIT_COLORS[suit]; ctx.font = `bold ${Math.floor(CARD_WIDTH * 0.55)}px Arial`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(suit, x + CARD_WIDTH / 2, y + CARD_HEIGHT / 2);
+    } else if (type === 'deck') {
+        ctx.fillStyle = 'rgba(214, 198, 117, 0.2)'; ctx.font = `${Math.floor(CARD_WIDTH * 0.24)}px Arial`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText("🔄", x + CARD_WIDTH / 2, y + CARD_HEIGHT / 2);
+    }
+    ctx.restore();
+}
+function drawCardFront(ctx, x, y, w, h, card) {
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 1; ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = COLORS[card.suit]; 
+    let fontSizeValue = Math.floor(w * 0.2);
+    ctx.font = `bold ${fontSizeValue}px Arial`; ctx.fillText(card.value, x + w * 0.08, y + h * 0.16);
+    ctx.font = `${Math.floor(w * 0.18)}px Arial`; ctx.fillText(card.suit, x + w * 0.08, y + h * 0.30);
+    
+    if (card.value === 'Т') {
+        ctx.save(); ctx.fillStyle = '#d4af37'; ctx.beginPath();
+        let cx = x + w/2; let cy = y + h/2; let r = w * 0.25;
+        ctx.moveTo(cx - r, cy + r * 0.3); ctx.lineTo(cx - r * 1.2, cy - r * 0.7); ctx.lineTo(cx - r * 0.4, cy - r * 0.2); ctx.lineTo(cx, cy - r * 1.1);
+        ctx.lineTo(cx + r * 0.4, cy - r * 0.2); ctx.lineTo(cx + r * 1.2, cy - r * 0.7); ctx.lineTo(cx + r, cy + r * 0.3); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = COLORS[card.suit]; ctx.font = `${Math.floor(w * 0.32)}px Arial`; ctx.textAlign = 'center';
+        ctx.fillText(card.suit, x + w/2, y + h/2 + h * 0.25); ctx.restore();
+    } else if (['К', 'Д', 'В'].includes(card.value)) {
+        ctx.save(); ctx.strokeStyle = 'rgba(212, 175, 55, 0.3)'; ctx.lineWidth = 2; ctx.strokeRect(x + w*0.15, y + h*0.1, w*0.7, h*0.8);
+        ctx.font = `bold ${Math.floor(w * 0.45)}px Georgia`; ctx.textAlign = 'center'; ctx.fillText(card.value, x + w/2, y + h/2 + h * 0.1); ctx.restore();
+    } else {
+        ctx.font = `${Math.floor(w * 0.45)}px Arial`; ctx.textAlign = 'center'; ctx.fillText(card.suit, x + w/2, y + h/2 + h * 0.1);
+    }
+    ctx.textAlign = 'left';
+}
+
+function drawCard(ctx, x, y, card, isDragging = false) {
+    ctx.save(); ctx.shadowColor = 'rgba(0, 0, 0, 0.4)'; ctx.shadowBlur = isDragging ? 15 : 6; ctx.shadowOffsetY = isDragging ? 8 : 3;
+    ctx.beginPath(); ctx.moveTo(x + CARD_RADIUS, y);
+    ctx.arcTo(x + CARD_WIDTH, y, x + CARD_WIDTH, y + CARD_HEIGHT, CARD_RADIUS); ctx.arcTo(x + CARD_WIDTH, y + CARD_HEIGHT, x, y + CARD_HEIGHT, CARD_RADIUS);
+    ctx.arcTo(x, y + CARD_HEIGHT, x, y, CARD_RADIUS); ctx.arcTo(x, y, x + CARD_WIDTH, y, CARD_RADIUS); ctx.closePath(); ctx.clip();
+    if (card.isFaceUp) drawCardFront(ctx, x, y, CARD_WIDTH, CARD_HEIGHT, card); else drawCardBack(ctx, x, y, CARD_WIDTH, CARD_HEIGHT);
+    ctx.restore();
+}
+function updateLayout() {
+    canvas.width = canvas.parentElement.clientWidth; 
+    canvas.height = canvas.parentElement.clientHeight;
+    
+    // АДАПТИВНЫЙ РАСЧЕТ: На ПК карты будут крупными, на мобилках — компактными
+    let targetWidth = Math.floor((canvas.width) / 9.5); 
+    if (canvas.width > 850) {
+        // Настройки для ПК
+        CARD_WIDTH = Math.max(80, Math.min(95, targetWidth)); 
+    } else {
+        // Настройки для смартфонов
+        CARD_WIDTH = Math.max(55, Math.min(65, targetWidth)); 
+    }
+    CARD_HEIGHT = Math.floor(CARD_WIDTH * 1.42);
+    
+    let spacing = (canvas.width - (7 * CARD_WIDTH)) / 8; 
+    zones.deck.x = spacing; 
+    zones.waste.x = spacing * 2 + CARD_WIDTH;
+    
+    // Поднимаем верхний ряд чуть выше на мобилках, чтобы освободить место
+    let topY = canvas.width > 850 ? 80 : 65;
+    zones.deck.y = topY; 
+    zones.waste.y = topY;
+    
+    for (let i = 0; i < 4; i++) { 
+        zones.foundations[i].x = canvas.width - (4 - i) * (CARD_WIDTH + spacing); 
+        zones.foundations[i].y = topY; 
+    }
+    
+    zones.tableaus = []; 
+    for (let i = 0; i < 7; i++) { 
+        zones.tableaus.push({ x: spacing + i * (CARD_WIDTH + spacing), y: CARD_HEIGHT + (canvas.width > 850 ? 100 : 80) }); 
+    }
+}
+
+function createDealAnimations() {
+    let delay = 0; let tempDeck = [...deck]; deck = [];
+    for (let col = 0; col < 7; col++) {
+        for (let row = col; row < 7; row++) {
+            let card = tempDeck.pop(); card.isFaceUp = (row === col);
+            
+            // Динамический шаг: на ПК посвободнее, на мобилках — очень плотно
+            let currentOffset = 0;
+            let upStep = canvas.width > 850 ? 25 : 20;
+            let downStep = canvas.width > 850 ? 13 : 8;
+            for (let i = 0; i < tableaus[row].length; i++) { 
+                currentOffset += tableaus[row][i].isFaceUp ? upStep : downStep; 
+            }
+            
+            animations.push({
+                card: card, startX: zones.deck.x, startY: zones.deck.y, currentX: zones.deck.x, currentY: zones.deck.y,
+                targetX: zones.tableaus[row].x, targetY: zones.tableaus[row].y + currentOffset, progress: 0, speed: 0.05, delay: delay, colIndex: row
+            });
+            delay += 3;
+        }
+    }
+    deck = tempDeck;
+}
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawEmptySlot(ctx, zones.deck.x, zones.deck.y, 'deck'); 
+    drawEmptySlot(ctx, zones.waste.x, zones.waste.y, 'waste');
+    foundations.forEach((f, i) => drawEmptySlot(ctx, zones.foundations[i].x, zones.foundations[i].y, 'foundation', i));
+    tableaus.forEach((t, i) => drawEmptySlot(ctx, zones.tableaus[i].x, zones.tableaus[i].y, 'tableau', i));
+
+    if (gameStarted) {
+        if (deck.length > 0) drawCard(ctx, zones.deck.x, zones.deck.y, { isFaceUp: false });
+        if (waste.length > 0) drawCard(ctx, zones.waste.x, zones.waste.y, waste[waste.length - 1]);
+        foundations.forEach((f, i) => { if(f.length > 0) drawCard(ctx, zones.foundations[i].x, zones.foundations[i].y, f[f.length - 1]); });
+        
+        let upStep = canvas.width > 850 ? 25 : 20;
+        let downStep = canvas.width > 850 ? 13 : 8;
+        
+        tableaus.forEach((t, colIdx) => { 
+            t.forEach((card, rowIdx) => { 
+                let offset = 0;
+                for (let i = 0; i < rowIdx; i++) { offset += t[i].isFaceUp ? upStep : downStep; }
+                if (!draggedCards.includes(card)) drawCard(ctx, zones.tableaus[colIdx].x, zones.tableaus[colIdx].y + offset, card); 
+            }); 
+        });
+    }
+
+    let activeAnimations = false;
+    animations.forEach(anim => {
+        if (anim.delay > 0) { anim.delay--; activeAnimations = true; return; }
+        if (anim.progress < 1) {
+            anim.progress += anim.speed; if (anim.progress > 1) anim.progress = 1;
+            anim.currentX = anim.startX + (anim.targetX - anim.startX) * anim.progress; anim.currentY = anim.startY + (anim.targetY - anim.startY) * anim.progress;
+            drawCard(ctx, anim.currentX, anim.currentY, anim.card); activeAnimations = true;
+            if (anim.progress <= anim.speed * 1.5) { playCardSound(); }
+        } else if (!anim.processed) { tableaus[anim.colIndex].push(anim.card); anim.processed = true; }
+    });
+
+    if (!activeAnimations && animations.length > 0) { animations = []; checkAvailableMoves(); }
+    if (isDragging && draggedCards.length > 0) { 
+        let dragStep = canvas.width > 850 ? 25 : 20;
+        draggedCards.forEach((card, idx) => { drawCard(ctx, dragX, dragY + (idx * dragStep), card, true); }); 
+    }
+    requestAnimationFrame(gameLoop);
+}
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawEmptySlot(ctx, zones.deck.x, zones.deck.y, 'deck'); drawEmptySlot(ctx, zones.waste.x, zones.waste.y, 'waste');
+    foundations.forEach((f, i) => drawEmptySlot(ctx, zones.foundations[i].x, zones.foundations[i].y, 'foundation', i));
+    tableaus.forEach((t, i) => drawEmptySlot(ctx, zones.tableaus[i].x, zones.tableaus[i].y, 'tableau', i));
+
+    if (gameStarted) {
+        if (deck.length > 0) drawCard(ctx, zones.deck.x, zones.deck.y, { isFaceUp: false });
+        if (waste.length > 0) drawCard(ctx, zones.waste.x, zones.waste.y, waste[waste.length - 1]);
+        foundations.forEach((f, i) => { if(f.length > 0) drawCard(ctx, zones.foundations[i].x, zones.foundations[i].y, f[f.length - 1]); });
+        tableaus.forEach((t, colIdx) => { t.forEach((card, rowIdx) => { if (!draggedCards.includes(card)) drawCard(ctx, zones.tableaus[colIdx].x, zones.tableaus[colIdx].y + rowIdx * Math.floor(CARD_HEIGHT * 0.18), card); }); });
+    }
+
+    let activeAnimations = false;
+    animations.forEach(anim => {
+        if (anim.delay > 0) { anim.delay--; activeAnimations = true; return; }
+        if (anim.progress < 1) {
+            anim.progress += anim.speed; if (anim.progress > 1) anim.progress = 1;
+            anim.currentX = anim.startX + (anim.targetX - anim.startX) * anim.progress; anim.currentY = anim.startY + (anim.targetY - anim.startY) * anim.progress;
+            drawCard(ctx, anim.currentX, anim.currentY, anim.card); activeAnimations = true;
+            if (anim.progress <= anim.speed * 1.5) { playCardSound(); }
+        } else if (!anim.processed) { tableaus[anim.colIndex].push(anim.card); anim.processed = true; }
+    });
+
+    if (!activeAnimations && animations.length > 0) { animations = []; checkAvailableMoves(); }
+    if (isDragging && draggedCards.length > 0) { draggedCards.forEach((card, idx) => { drawCard(ctx, dragX, dragY + idx * Math.floor(CARD_HEIGHT * 0.18), card, true); }); }
+    requestAnimationFrame(gameLoop);
+}
+function getCoords(e) {
+    const rect = canvas.getBoundingClientRect();
+    if (e.touches && e.touches.length > 0) { return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top }; }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function handleStart(e) {
+    if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+    if (!gameStarted || animations.length > 0) return;
+    const pos = getCoords(e);
+    if (pos.x >= zones.deck.x && pos.x <= zones.deck.x + CARD_WIDTH && pos.y >= zones.deck.y && pos.y <= zones.deck.y + CARD_HEIGHT) { handleDeckClick(); return; }
+
+    tableaus.forEach((t, colIdx) => {
+        for (let rowIdx = t.length - 1; rowIdx >= 0; rowIdx--) {
+            let cardX = zones.tableaus[colIdx].x; let cardY = zones.tableaus[colIdx].y + rowIdx * Math.floor(CARD_HEIGHT * 0.18); 
+            let h = (rowIdx === t.length - 1) ? CARD_HEIGHT : Math.floor(CARD_HEIGHT * 0.18);
+            if (pos.x >= cardX && pos.x <= cardX + CARD_WIDTH && pos.y >= cardY && pos.y <= cardY + h) {
+                if (t[rowIdx].isFaceUp) {
+                    saveHistory(); isDragging = true; draggedCards = t.slice(rowIdx); sourceStack = { type: 'tableau', index: colIdx, count: draggedCards.length };
+                    dragOffsetX = pos.x - cardX; dragOffsetY = pos.y - cardY; dragX = pos.x - dragOffsetX; dragY = pos.y - dragOffsetY; playCardSound();
+                }
+                break;
+            }
+        }
+    });
+    if(waste.length > 0 && pos.x >= zones.waste.x && pos.x <= zones.waste.x + CARD_WIDTH && pos.y >= zones.waste.y && pos.y <= zones.waste.y + CARD_HEIGHT) {
+        saveHistory(); isDragging = true; draggedCards = [waste[waste.length - 1]]; sourceStack = { type: 'waste' };
+        dragOffsetX = pos.x - zones.waste.x; dragOffsetY = pos.y - zones.waste.y; dragX = pos.x - dragOffsetX; dragY = pos.y - dragOffsetY; playCardSound();
+    }
+}
+
+function handleMove(e) { if (!isDragging) return; if (e.cancelable) e.preventDefault(); const pos = getCoords(e); dragX = pos.x - dragOffsetX; dragY = pos.y - dragOffsetY; }
+
+canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('touchstart', handleStart);
+canvas.addEventListener('mousemove', handleMove); canvas.addEventListener('touchmove', handleMove, { passive: false });
+function handleEnd(e) {
+    if (!isDragging) return; isDragging = false;
+    let targetZone = findDropZone(dragX + CARD_WIDTH/2, dragY + CARD_HEIGHT/2); let validMove = false;
+    if (targetZone) {
+        if (targetZone.type === 'tableau') {
+            let col = targetZone.index; let targetCard = tableaus[col][tableaus[col].length - 1];
+            if (isValidTableauMove(draggedCards, targetCard)) { removeCardsFromSource(); tableaus[col] = tableaus[col].concat(draggedCards); validMove = true; }
+        } else if (targetZone.type === 'foundation' && draggedCards.length === 1) {
+            let fIdx = targetZone.index; let targetCard = foundations[fIdx][foundations[fIdx].length - 1];
+            if (isValidFoundationMove(draggedCards[0], targetCard, fIdx)) { removeCardsFromSource(); foundations[fIdx].push(draggedCards[0]); validMove = true; }
+        }
+    }
+    if (!validMove) historyState.pop(); else { autoFlipTopCards(); checkWinCondition(); playCardSound(); checkAvailableMoves(); }
+    draggedCards = [];
+}
+
+canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('touchend', handleEnd);
+
+function handleDeckClick() {
+    saveHistory();
+    if (deck.length === 0) { deck = waste.reverse().map(c => { c.isFaceUp = false; return c; }); waste = []; }
+    else { let card = deck.pop(); card.isFaceUp = true; waste.push(card); }
+    playCardSound(); checkAvailableMoves();
+}
+
+function isValidTableauMove(cards, targetCard) {
+    if (!cards || cards.length === 0) return false;
+    let firstCard = cards[0]; 
+    if (!targetCard) return firstCard.value === 'К';
+    if (COLORS[firstCard.suit] === COLORS[targetCard.suit]) return false;
+    return VALUES.indexOf(firstCard.value) === VALUES.indexOf(targetCard.value) - 1;
+}
+
+function isValidFoundationMove(card, targetCard, fIdx) {
+    if (!card || card.suit !== SUITS[fIdx]) return false; 
+    if (!targetCard) return card.value === 'Т';
+    return VALUES.indexOf(card.value) === VALUES.indexOf(targetCard.value) + 1;
+}
+
+function removeCardsFromSource() { if (sourceStack.type === 'tableau') tableaus[sourceStack.index].splice(-sourceStack.count); else if (sourceStack.type === 'waste') waste.pop(); }
+function autoFlipTopCards() { tableaus.forEach(t => { if (t.length > 0 && !t[t.length - 1].isFaceUp) t[t.length - 1].isFaceUp = true; }); }
+function saveHistory() { historyState.push({ deck: JSON.parse(JSON.stringify(deck)), waste: JSON.parse(JSON.stringify(waste)), foundations: JSON.parse(JSON.stringify(foundations)), tableaus: JSON.parse(JSON.stringify(tableaus)) }); }
+
+function checkAvailableMoves() {
+    if (!gameStarted || animations.length > 0) return;
+    let movable = []; tableaus.forEach((t, i) => { if (t.length > 0) movable.push({ card: t[t.length - 1], from: 'tableau', idx: i }); });
+    if (waste.length > 0) movable.push({ card: waste[waste.length - 1], from: 'waste' });
+    for (let m of movable) {
+        for (let fIdx = 0; fIdx < 4; fIdx++) { if (isValidFoundationMove(m.card, foundations[fIdx][foundations[fIdx].length - 1], fIdx)) { showActionButtons(false); return; } }
+        for (let tIdx = 0; tIdx < 7; tIdx++) { if ((m.from !== 'tableau' || m.idx !== tIdx) && isValidTableauMove([m.card], tableaus[tIdx][tableaus[tIdx].length - 1])) { showActionButtons(false); return; } }
+    }
+    if (deck.length > 0 || waste.length > 1) { showActionButtons(false); return; }
+    showActionButtons(true);
+}
+
+function showActionButtons(show) { 
+    const s = show ? 'inline-block' : 'none'; 
+    document.getElementById('undo-btn').style.display = (show && undoCount > 0) ? 'inline-block' : 'none'; 
+    document.getElementById('reshuffle-btn').style.display = s; 
+}
+
+function checkWinCondition() {
+    let totalCardsInFoundations = foundations.reduce((sum, f) => sum + f.length, 0);
+    if (totalCardsInFoundations === 52) { clearInterval(timerInterval); gameStarted = false; playWinSound(); document.getElementById('win-screen').style.display = 'flex'; }
+}
+
+document.getElementById('undo-btn').addEventListener('click', () => {
+    if (undoCount > 0) {
+        alert("Просмотр Reward-видео Яндекс Игр... Шаг назад!"); undoCount--;
+        if (historyState.length > 0) { let prev = historyState.pop(); deck = prev.deck; waste = prev.waste; foundations = prev.foundations; tableaus = prev.tableaus; }
+        document.getElementById('undo-btn').innerText = `Отменить ход (${undoCount})`;
+        showActionButtons(false); checkAvailableMoves();
+    }
+});
+
+document.getElementById('reshuffle-btn').addEventListener('click', () => { alert("Reward-видео Яндекс Игр... Поле полностью пересобрано!"); resetGameLogic(); });
+document.getElementById('quick-restart-btn').addEventListener('click', () => { alert("Вызов рекламы Яндекс Игр... Генерируем новый расклад!"); resetGameLogic(); });
+document.getElementById('retry-btn').addEventListener('click', () => { alert("Просмотр коммерческой рекламы перед новой попыткой..."); document.getElementById('lose-screen').style.display = 'none'; resetGameLogic(); });
+document.getElementById('win-btn').addEventListener('click', () => { alert("Просмотр commercial-рекламы перед новой партией..."); document.getElementById('win-screen').style.display = 'none'; resetGameLogic(); });
+
+function startTimer() {
+    clearInterval(timerInterval); timeLeft = 600;
+    timerInterval = setInterval(() => {
+        timeLeft--; let mins = Math.floor(timeLeft / 60), secs = timeLeft % 60;
+        document.getElementById('timer-display').innerText = `ВРЕМЯ: ${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        if (timeLeft <= 0) { clearInterval(timerInterval); gameStarted = false; playLoseSound(); document.getElementById('lose-screen').style.display = 'flex'; }
+    }, 1000);
+}
+
+function findDropZone(x, y) {
+    for (let i = 0; i < 4; i++) { if (x >= zones.foundations[i].x && x <= zones.foundations[i].x + CARD_WIDTH && y >= zones.foundations[i].y && y <= zones.foundations[i].y + CARD_HEIGHT) return { type: 'foundation', index: i }; }
+    for (let i = 0; i < 7; i++) { 
+        let t = tableaus[i], h = t.length > 0 ? CARD_HEIGHT + (t.length - 1) * Math.floor(CARD_HEIGHT * 0.18) : CARD_HEIGHT; 
+        if (x >= zones.tableaus[i].x && x <= zones.tableaus[i].x + CARD_WIDTH && y >= zones.tableaus[i].y && y <= zones.tableaus[i].y + h) return { type: 'tableau', index: i }; 
+    }
+    return null;
+}
+
+function resetGameLogic() {
+    deck = []; waste = []; historyState = []; foundations = [[], [], [], []]; tableaus = [[], [], [], [], [], [], []]; 
+    undoCount = 5; document.getElementById('undo-btn').innerText = `Отменить ход (${undoCount})`; showActionButtons(false);
+    SUITS.forEach(suit => { VALUES.forEach(value => { deck.push({ suit, value, isFaceUp: false }); }); }); deck.sort(() => Math.random() - 0.5);
+    createDealAnimations(); startTimer(); gameStarted = true;
+}
+
+document.getElementById('start-btn').addEventListener('click', () => { document.getElementById('start-screen').style.display = 'none'; updateLayout(); checkOrientation(); resetGameLogic(); });
+
+checkOrientation();
+updateLayout();
+gameLoop();
+</script>
+</body>
+</html>
